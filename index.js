@@ -1,42 +1,38 @@
 'use strict';
 
-function Item(name, category, quantity) {
-  const invalidObject = { notValid: true };
+class Item {
+  constructor(name, category, quantity) {
+    const invalidObject = { notValid: true };
 
-  if (arguments.length < 3) return invalidObject;
+    if (arguments.length < 3) return invalidObject;
 
-  if (
-    this.validName(name) &&
-    this.validCategory(category) &&
-    this.validQuantity(quantity)
-  ) {
-    this._name = name;
-    this._category = category;
-    this.quantity = quantity;
-    this._SKU = this.makeSKU(name, category);
+    if (this.validName(name) &&
+      this.validCategory(category) &&
+      this.validQuantity(quantity)) {
+      this._name = name;
+      this._category = category;
+      this.quantity = quantity;
+      this._SKU = this.makeSKU(name, category);
 
-    return this; // can we think of a way to refactor this so we can rely on implicit return?
+      return this; // can we think of a way to refactor this so we can rely on implicit return?
+    }
+
+    // we could add some more functionality like custom error messages for diff points of failure
+    return invalidObject;
   }
-
-  // we could add some more functionality like custom error messages for diff points of failure
-  return invalidObject;
-}
-
-Item.prototype.makeSKU = function (name, category) {
-  const firstThree = name.replace(/\s/g, '').slice(0, 3);
-  return `${firstThree}${category.slice(0, 2)}`.toUpperCase();
-}
-
-Item.prototype.validName = function (name) {
-  return name.replace(/\s/g, '').length >= 5;
-}
-
-Item.prototype.validCategory = function (category) {
-  return Item.prototype.validName.call(this, category) && !/\s/.test(category);
-}
-
-Item.prototype.validQuantity = function (quantity) {
-  return quantity != undefined && typeof quantity === 'number';
+  makeSKU(name, category) {
+    const firstThree = name.replace(/\s/g, '').slice(0, 3);
+    return `${firstThree}${category.slice(0, 2)}`.toUpperCase();
+  }
+  validName(name) {
+    return name.replace(/\s/g, '').length >= 5;
+  }
+  validCategory(category) {
+    return Item.prototype.validName.call(this, category) && !/\s/.test(category);
+  }
+  validQuantity(quantity) {
+    return quantity != undefined && typeof quantity === 'number';
+  }
 }
 
 const ItemManager = (function () {
@@ -55,16 +51,7 @@ const ItemManager = (function () {
     items: [],
     create(itemName, itemCategory, itemQuantity) {
       const newItem = new Item(itemName, itemCategory, itemQuantity);
-
-      // this is pretty bad...
-      if (
-        Object
-          .prototype
-          .hasOwnProperty
-          .call(newItem, 'notValid') &&
-        newItem.notValid
-      ) return false;
-
+      if (Object.prototype.hasOwnProperty.call(newItem, 'notValid') && newItem.notValid) { return false; }
       this.addItem(newItem);
       return true;
     },
@@ -106,19 +93,14 @@ const ItemManager = (function () {
       for (const existingItem of this.items) {
         if (existingItem._SKU === sku) {
           for (const prop in propsToUpdate) {
-            if (
-              Object
-                .prototype
-                .hasOwnProperty
-                .call(propsToUpdate, prop)
-              // hard update; no reassignment or incorporation of original value
-            ) existingItem[prop] = propsToUpdate[prop];
+            // hard update; no reassignment or incorporation of original value
+            if (Object.prototype.hasOwnProperty.call(propsToUpdate, prop)) { existingItem[prop] = propsToUpdate[prop]; }
           }
         }
       }
     },
     delete(sku) {
-      let deletedSomething = false;
+      let deletedSomething = false; // so bad
 
       for (let i = 0; i < this.items.length;) {
         if (sku === this.items[i]._SKU) {
@@ -143,12 +125,10 @@ const ItemManager = (function () {
         }
       }, this);
     },
-    itemsInCategory(categoryToSearch) {
-      console.log(`Items in the ${categoryToSearch} category: `);
+    itemsInCategory(category) {
+      console.log(`Items in the ${category} category: `);
       this.items.forEach((item) => {
-        if (categoryToSearch === item._category) {
-          log(item);
-        }
+        if (category === item._category) log(item);
       }, this)
     },
 
@@ -187,7 +167,6 @@ const ReportManager = {
     console.log(str)
   },
 }
-
 
 ItemManager.create('basket ball', 'sports', 3);           // valid item
 ItemManager.create('soccer ball', 'sports', 5);           // valid item
