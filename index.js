@@ -1,8 +1,8 @@
-function Item(name, category, quantity) {
-  // item instances are used by manager instances
-  // ensure all info is present; validate present information
+'use strict';
 
+function Item(name, category, quantity) {
   const invalidObject = { notValid: true };
+
   if (arguments.length < 3) return invalidObject;
 
   if (
@@ -40,151 +40,158 @@ Item.prototype.validQuantity = function (quantity) {
 }
 
 const ItemManager = (function () {
-  // creates, updates, and deletes items
-  // provides information about items
-  // const privateData = [];
-
-
   function log(item) {
-    if (item instanceof Item) {
-
-      if (item.quantity > 0) {
-        console.log(`${item.quantity} <-> ${item._name}`);
-      } else {
-
-      }
+    if (!(item instanceof Item)) {
+      throw TypeError('argument was not an instance of the Item class!');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'quantity') && item.quantity) {
+      console.log(`${item._name} : IN STOCK`); // ${item.quantity}
     } else {
-      throw TypeError('argument was not an instance of the Item class!')
+      console.log(`${item._name} : OUT OF STOCK`);
     }
   }
 
   return {
+    items: [],
     create(itemName, itemCategory, itemQuantity) {
       const newItem = new Item(itemName, itemCategory, itemQuantity);
 
-      if (Object.prototype.hasOwnProperty.call(newItem, 'notValid') && newItem.notValid) {
-        console.log(false);
-        return false;
-      } else {
-        return this.addItem(newItem);
+      // this is pretty bad...
+      if (
+        Object
+          .prototype
+          .hasOwnProperty
+          .call(newItem, 'notValid') &&
+        newItem.notValid
+      ) return false;
+
+      this.addItem(newItem);
+      return true;
+    },
+    addItem(newItem) {
+      function looselyEqual(existingItem, newItem) {
+        return (
+          existingItem._name === newItem._name &&
+          existingItem._category === newItem._category &&
+          existingItem._SKU === newItem._SKU
+        );
+      }
+
+      if (!(newItem instanceof Item)) {
+        throw TypeError('argument was not an instance of the Item class!');
+      }
+
+      if (!newItem.quantity) {
+        console.log('Nothing was added; detected zero quantity item!');
+        return this.items.length;
+      }
+
+      if (!this.items.length) {
+        console.log(`new Item: ${newItem._name} was added`);
+        return this.items.push(newItem);
+      }
+
+      for (const existingItem of this.items) {
+        if (looselyEqual(existingItem, newItem)) {
+          existingItem.quantity += newItem.quantity;
+          console.log(`quantity of Item: ${existingItem._name} increased by ${newItem.quantity}`);
+          return this.items.length;
+        } else {
+          console.log(`new Item: ${newItem._name} was added`);
+          return this.items.push(newItem);
+        }
       }
     },
-    items: [],
-    itemsInCategory(categoryToSearch) {
-      console.log(`Items in the ${categoryToSearch} category:`);
-      this.items.forEach((item) => {
-        if (categoryToSearch === item._category) {
-          log(item);
-        }
-      }, this)
-    },
-    inStock() {
-      console.log('In Stock:');
-      this.items.forEach((item) => {
-        if (item.quantity > 0) {
-          log(item);
-        }
-      }, this);
-    },
-    addItem(item) {
-      console.log('Item Added Successfully!')
-      return this.items.push(item);
-    },
     update(sku, propsToUpdate) {
-      /*
-      potentially mutating this.items
-      iterate through this.items
-        for each item, check if the sku matches item._SKU
-        if it does, update information based on propsToUpdate object's info
-      */
-      const updatedItems = this.items.map((item) => {
-        if (item._SKU === sku) {
+      for (const existingItem of this.items) {
+        if (existingItem._SKU === sku) {
           for (const prop in propsToUpdate) {
             if (
               Object
                 .prototype
                 .hasOwnProperty
                 .call(propsToUpdate, prop)
-            ) {
-              item[prop] = propsToUpdate[prop];
-            }
+              // hard update; no reassignment or incorporation of original value
+            ) existingItem[prop] = propsToUpdate[prop];
           }
         }
-        return item;
-      }, this);
-
-      this.items = updatedItems; // is this a good idea to create a new array?
+      }
     },
     delete(sku) {
-      /*
-        mutates this.items
-        removes all items from array with a specified _SKU with filter
-        filtering approach creates a new object so any aliases will not work out
-      */
-      const filteredItems = this.items.filter((item) => {
-        return item._SKU !== sku;
-      }, this);
-      if (filteredItems.length < this.items.length) {
-        console.log(`All items with SKU: ${sku} were deleted`);
-        this.items = filteredItems;
-        return true;
-      } else {
-        console.log('Nothing was deleted');
-        return false;
+      let deletedSomething = false;
+
+      for (let i = 0; i < this.items.length;) {
+        if (sku === this.items[i]._SKU) {
+          this.items.splice(i, 1).join('');
+          deletedSomething = true;
+        } else {
+          i++;
+        }
       }
+
+      return deletedSomething;
+    },
+    inStock() {
+      console.log('In Stock Items:');
+      this.items.forEach((item) => {
+        if (
+          Object
+            .prototype
+            .hasOwnProperty
+            .call(item, 'quantity') && item.quantity) {
+          log(item);
+        }
+      }, this);
+    },
+    itemsInCategory(categoryToSearch) {
+      console.log(`Items in the ${categoryToSearch} category: `);
+      this.items.forEach((item) => {
+        if (categoryToSearch === item._category) {
+          log(item);
+        }
+      }, this)
     },
 
   };
 }());
 
-ItemManager.create('basket ball', 'sports', 3);           // valid item
-ItemManager.create('asd', 'sports', 0);
-ItemManager.create('soccer ball', 'sports', 5);           // valid item
-ItemManager.create('football', 'sports');
-ItemManager.create('football', 'sports', 3);              // valid item
-ItemManager.create('kitchen pot', 'cooking items', 0);
-ItemManager.create('kitchen pot', 'cooking', 3);          // valid item
-ItemManager.create('basket ball', 'sports', 100);         // valid item
-ItemManager.create('basket ball', 'sports', 10000);       // valid item
+const ReportManager = {
+  init: function (itemManagerObj) {
+    const instance = Object.create(this);
+    this.items = itemManagerObj;
+    return instance;
+  },
+  createReporter: function (sku) {
+    const customReporter = Object.create(this);
+    customReporter.itemInfo = function () {
+      const items = this.items.items;
 
-console.log(ItemManager.items); // 4 element array
+      items.forEach((item) => {
+        if (item._SKU === sku) {
+          for (const prop of Object.getOwnPropertyNames(item)) {
+            console.log(`${prop} : ${item[prop]}`);
+          }
+        }
+      });
+    }
 
-ItemManager.update('BASSP', { quantity: 0 });
-console.log(ItemManager.items); // 4 element array
-
-ItemManager.itemsInCategory('sports');
-
-function ReportsManager() {
-  /*
-  given some specific item, generate report for that item
-
-  given no specific item, generate report for all items
-  */
+    return customReporter;
+  },
+  reportInStock: function () {
+    let str = '';
+    this.items.items.forEach((existingItem) => {
+      if (existingItem.quantity) {
+        str += (!str.length) ? existingItem._name : ',' + existingItem._name;
+      }
+    }, ItemManager.items);
+    console.log(str)
+  },
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ItemManager.create('basket ball', 'sports', 0);           // valid item
-/* ItemManager.create('asd', 'sports', 0);
+ItemManager.create('basket ball', 'sports', 3);           // valid item
 ItemManager.create('soccer ball', 'sports', 5);           // valid item
-ItemManager.create('football', 'sports');
 ItemManager.create('football', 'sports', 3);              // valid item
-ItemManager.create('kitchen pot', 'cooking items', 0);
 ItemManager.create('kitchen pot', 'cooking', 3);          // valid item
 
 ItemManager.items;
@@ -196,16 +203,18 @@ ReportManager.reportInStock();
 
 ItemManager.update('SOCSP', { quantity: 0 });
 ItemManager.inStock();
-// returns list with the item objects for football and kitchen pot
+// // returns list with the item objects for football and kitchen pot
 ReportManager.reportInStock();
-// logs football,kitchen pot
+// // logs football,kitchen pot
+console.log(ItemManager.items);
 ItemManager.itemsInCategory('sports');
-// returns list with the item objects for basket ball, soccer ball, and football
+// // returns list with the item objects for basket ball, soccer ball, and football
 ItemManager.delete('SOCSP');
-ItemManager.items;
-// returns list with the remaining 3 valid items (soccer ball is removed from the list)
+console.log(ItemManager.items);
+// // returns list with the remaining 3 valid items (soccer ball is removed from the list)
 
 const kitchenPotReporter = ReportManager.createReporter('KITCO');
+
 kitchenPotReporter.itemInfo();
 // logs
 // skuCode: KITCO
@@ -219,4 +228,4 @@ kitchenPotReporter.itemInfo();
 // skuCode: KITCO
 // itemName: kitchen pot
 // category: cooking
-// quantity: 10 */
+// quantity: 10
